@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum Hostel {
+  BOYS
+  GIRLS
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Branch {
+  CSE
+  ECE
+  MCE
+  EEE
+  CVE
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  SNACKS
+  DINNER
+}
+
+enum PointTransactionType {
+  EARNED_OPT_OUT
+  REDEEMED_EXTRA
+  MANUAL_ADJUSTMENT
+}
+
+enum RedemptionStatus {
+  ACTIVE
+  FULFILLED
+  CANCELLED
+}
+
+model User {
+  id               String             @id @default(cuid())
+  rollNumber       String?            @unique
+  username         String?            @unique
+  passwordHash     String
+  role             Role
+  pointsBalance    Int                @default(0)
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  studentProfile   StudentProfile?
+  createdMenus     MenuWeek[]         @relation("MenuWeekCreatedBy")
+  pointTransactions PointTransaction[]
+  mealOptOuts      MealOptOut[]
+  redemptions      Redemption[]
+  attendances      Attendance[]
+  mealRatings      MealRating[]
+}
+
+model StudentProfile {
+  id         String  @id @default(cuid())
+  userId      String  @unique
+  fullName    String
+  batchYear   Int
+  branch      Branch
+  serial      Int
+  gender      Gender
+  hostel      Hostel
+  messName    String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MenuWeek {
+  id          String      @id @default(cuid())
+  weekStart   DateTime    @unique
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   User        @relation("MenuWeekCreatedBy", fields: [createdById], references: [id])
+  entries     MenuEntry[]
+}
+
+model MenuEntry {
+  id          String    @id @default(cuid())
+  menuWeekId   String
+  mealDate    DateTime
+  mealType    MealType
+  title       String
+  description String?
+  items       String[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  menuWeek    MenuWeek  @relation(fields: [menuWeekId], references: [id], onDelete: Cascade)
+  mealOptOuts MealOptOut[]
+  attendances Attendance[]
+  ratings     MealRating[]
+
+  @@unique([mealDate, mealType])
+}
+
+model MealOptOut {
+  id               String    @id @default(cuid())
+  userId           String
+  menuEntryId      String
+  optedOutAt       DateTime  @default(now())
+  deadlineAt       DateTime
+  isBeforeDeadline Boolean
+  pointsAwarded    Int       @default(0)
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  menuEntry        MenuEntry @relation(fields: [menuEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, menuEntryId])
+}
+
+model PointTransaction {
+  id             String               @id @default(cuid())
+  userId         String
+  type           PointTransactionType
+  points         Int
+  description    String
+  referenceId    String?
+  createdAt      DateTime             @default(now())
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ExtraItem {
+  id           String       @id @default(cuid())
+  name         String       @unique
+  description  String?
+  pointsCost   Int
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  redemptions  Redemption[]
+}
+
+model Redemption {
+  id             String            @id @default(cuid())
+  userId         String
+  extraItemId    String
+  pointsSpent    Int
+  redemptionCode String            @unique
+  status         RedemptionStatus  @default(ACTIVE)
+  redeemedAt     DateTime          @default(now())
+  fulfilledAt    DateTime?
+  expiresAt      DateTime?
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  extraItem      ExtraItem         @relation(fields: [extraItemId], references: [id], onDelete: Restrict)
+}
+
+model Attendance {
+  id          String    @id @default(cuid())
+  userId       String
+  menuEntryId  String
+  wasPresent   Boolean
+  markedAt     DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  menuEntry    MenuEntry @relation(fields: [menuEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, menuEntryId])
+}
+
+model MealRating {
+  id          String    @id @default(cuid())
+  userId       String
+  menuEntryId  String
+  rating      Int
+  comment     String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  menuEntry   MenuEntry @relation(fields: [menuEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, menuEntryId])
+}
