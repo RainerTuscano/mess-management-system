@@ -311,19 +311,11 @@ router.get("/points/history", async (req, res) => {
 });
 
 router.get("/redemptions", async (req, res) => {
-  const rawRedemptions = await prisma.redemption.findMany({
+  const redemptions = await prisma.redemption.findMany({
     where: { userId: req.user.id },
     include: { extraItem: true },
     orderBy: { redeemedAt: "desc" }
   });
-
-  const redemption = await prisma.$transaction(async (tx) => {
-  const user = await tx.user.findUnique({ where: { id: req.user.id } });
-  if (user.pointsBalance < item.pointsCost) {
-    throw new Error("INSUFFICIENT_POINTS");
-  }
-  // ... rest of transaction
-});
 
   return res.json({ redemptions });
 });
